@@ -1,0 +1,96 @@
+/* 기본 컬러/테마 */
+:root{
+  --tdm-primary:#2563eb;
+  --tdm-muted:#94a3b8;
+  --tdm-soft:#f8fafc;
+}
+
+body{scroll-behavior:smooth}
+
+/* Calendar table */
+.calendar-table th, .calendar-table td{
+  vertical-align: top;
+}
+
+.calendar-table td{
+  height: 118px; /* 모바일에서도 손가락 터치하기 좋은 높이 */
+  padding: .5rem;
+  background: #fff;
+}
+
+.calendar-table tbody td.muted{
+  background: #fafafa;
+  color: #9aa5b1;
+}
+
+.calendar-table .date-btn{
+  font-size: .95rem;
+  line-height: 1.1;
+  border: 1px solid transparent;
+  background: var(--tdm-soft);
+}
+
+.calendar-table .date-btn:hover{
+  background: #eef2ff;
+}
+
+.calendar-table .date-btn.active{
+  background: #dbeafe;
+  border-color: #bfdbfe;
+}
+
+.calendar-table .today .date-btn{
+  outline: 2px solid var(--tdm-primary);
+  outline-offset: 1px;
+}
+
+/* 작은 액션 버튼(루틴/일정/기념일) */
+.calendar-table .mini-actions{
+  display:flex;
+  gap:.25rem;
+  margin-top:.35rem;
+}
+.calendar-table .mini-actions .btn{
+  padding:.2rem .4rem;
+}
+
+/* 일정 아이콘 모음 */
+.calendar-table .chips{
+  display:flex;
+  flex-wrap:wrap;
+  gap:.25rem;
+  margin-top:.35rem;
+}
+
+.calendar-table .chip{
+  display:inline-flex;
+  align-items:center;
+  gap:.25rem;
+  font-size:.7rem;
+  border:1px solid #e5e7eb;
+  border-radius:.5rem;
+  padding:.15rem .4rem;
+  background:#fff;
+  white-space:nowrap;
+}
+
+.calendar-table .chip i{
+  opacity:.9;
+}
+
+/* 빠른 추가 바 */
+#quickAddBar{
+  z-index: 1020; /* 모달 아래, 내비 위 */
+}
+
+/* 접근성: 포커스 표시 */
+:focus-visible{
+  outline: 3px solid #60a5fa;
+  outline-offset: 2px;
+}
+
+/* 반응형 */
+@media (max-width: 576px){
+  .calendar-table td{height: 110px;}
+  .calendar-table .chip{font-size:.68rem}
+}
