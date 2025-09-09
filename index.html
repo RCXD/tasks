@@ -1,0 +1,665 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <title>ToDo Mate — 달력 & 일정</title>
+  <meta name="description" content="달력으로 날짜별 루틴/일정/기념일을 빠르게 추가하고 색상과 태그로 정리하세요." />
+  <meta name="theme-color" content="#2563eb" />
+
+  <!-- Favicon (SVG) -->
+  <link rel="icon" type="image/svg+xml"
+    href='data:image/svg+xml;utf8,
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+        <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="%232563eb"/><stop offset="100%" stop-color="%231d4ed8"/></linearGradient></defs>
+        <rect rx="14" ry="14" x="4" y="4" width="56" height="56" fill="url(%23g)"/>
+        <path d="M24 34l6 6 14-14" fill="none" stroke="%23fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>' />
+
+  <!-- Bootstrap 5 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+        rel="stylesheet" crossorigin="anonymous" />
+  <!-- Font Awesome 6 -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+        rel="stylesheet" referrerpolicy="no-referrer" />
+
+  <!-- 최소 스타일 -->
+  <style>
+    :root{ --tdm-primary:#2563eb; --tdm-soft:#f8fafc; }
+    body{scroll-behavior:smooth}
+    .calendar-table th,.calendar-table td{vertical-align:top}
+    .calendar-table td{height:118px;padding:.5rem;background:#fff;position:relative}
+    .calendar-table tbody td.muted{background:#fafafa;color:#9aa5b1}
+    .calendar-table .date-btn{font-size:.95rem;line-height:1.1;border:1px solid transparent;background:var(--tdm-soft)}
+    .calendar-table .date-btn:hover{background:#eef2ff}
+    .calendar-table .date-btn.active{background:#dbeafe;border-color:#bfdbfe}
+    .calendar-table .today .date-btn{outline:2px solid var(--tdm-primary);outline-offset:1px}
+    /* 아이콘/액션은 hover시에만 보이기 */
+    .mini-actions{display:flex;gap:.25rem;margin-top:.35rem;opacity:0;pointer-events:none;transition:opacity .12s}
+    .calendar-table td:hover .mini-actions{opacity:1;pointer-events:auto}
+    .chips{display:flex;flex-wrap:wrap;gap:.25rem;margin-top:.35rem}
+    .chip{display:inline-flex;align-items:center;gap:.25rem;font-size:.72rem;border:1px solid #e5e7eb;border-radius:.5rem;padding:.15rem .45rem;background:#fff;white-space:nowrap;transition:transform .05s}
+    .chip:hover{transform:translateY(-1px)}
+    /* 칩 내부 아이콘도 hover시에만 보이기 */
+    .chip i{opacity:0;width:0;overflow:hidden;transition:opacity .12s,width .12s}
+    .calendar-table td:hover .chip i{opacity:1;width:auto}
+    #quickAddBar{z-index:1020}
+    :focus-visible{outline:3px solid #60a5fa;outline-offset:2px}
+    /* 색상 스와치 */
+    .swatch{width:28px;height:28px;border-radius:6px;border:1px solid #e5e7eb;cursor:pointer}
+    .swatch[aria-checked="true"]{outline:2px solid #111827;outline-offset:2px}
+    @media (max-width:576px){.calendar-table td{height:110px}.chip{font-size:.68rem}}
+  </style>
+</head>
+<body class="bg-light">
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg bg-white border-bottom sticky-top">
+    <div class="container">
+      <a class="navbar-brand d-flex align-items-center gap-2 fw-bold" href="#">
+        <span class="d-inline-flex align-items-center justify-content-center rounded-3"
+              style="width:32px;height:32px;background:#2563eb">
+          <i class="fa-solid fa-check text-white"></i>
+        </span>
+        ToDo Mate
+      </a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav"
+              aria-controls="nav" aria-expanded="false" aria-label="토글 내비게이션">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="nav">
+        <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
+          <li class="nav-item"><a class="nav-link" href="#calendar">달력</a></li>
+          <li class="nav-item"><a class="nav-link" href="#faq">FAQ</a></li>
+          <li class="nav-item ms-lg-3"><a class="btn btn-primary" href="#calendar">
+            <i class="fa-regular fa-square-check me-1"></i> 시작하기</a></li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <header class="py-5 bg-white">
+    <div class="container">
+      <div class="row align-items-center g-4">
+        <div class="col-lg-7">
+          <h1 class="display-6 fw-bold lh-1 mb-3">
+            색상과 태그로 <span class="text-primary">루틴·일정·기념일</span>을 더 선명하게
+          </h1>
+          <p class="lead text-secondary">마우스를 올리면 아이콘이 나타나고, 각 일정은 원하는 색으로 표시됩니다.</p>
+          <a class="btn btn-primary btn-lg" href="#calendar">
+            <i class="fa-solid fa-calendar-days me-2"></i>달력 열기
+          </a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Calendar -->
+  <section id="calendar" class="py-5">
+    <div class="container">
+      <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+        <h2 class="fw-bold mb-0">달력</h2>
+        <div class="d-flex align-items-center gap-2">
+          <button class="btn btn-outline-secondary" id="btnPrevMonth" type="button" aria-label="이전 달">
+            <i class="fa-solid fa-chevron-left"></i>
+          </button>
+          <div class="px-3 py-2 fw-semibold" id="cal-month-label" aria-live="polite"></div>
+          <button class="btn btn-outline-secondary" id="btnNextMonth" type="button" aria-label="다음 달">
+            <i class="fa-solid fa-chevron-right"></i>
+          </button>
+          <button class="btn btn-outline-primary ms-2" id="btnToday" type="button">오늘</button>
+        </div>
+      </div>
+
+      <div class="card shadow-sm">
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-bordered mb-0 calendar-table">
+              <thead class="table-light text-center small">
+                <tr>
+                  <th>일</th><th>월</th><th>화</th><th>수</th>
+                  <th>목</th><th>금</th><th>토</th>
+                </tr>
+              </thead>
+              <tbody id="cal-grid" class="align-middle"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- 빠른 추가 바 -->
+      <div id="quickAddBar" class="d-none position-sticky bottom-0 mt-3">
+        <div class="p-3 bg-white border rounded-4 shadow-sm d-flex flex-wrap align-items-center justify-content-between gap-2">
+          <div class="d-flex align-items-center gap-2">
+            <i class="fa-regular fa-calendar text-primary"></i>
+            <strong id="quickAddDate">YYYY-MM-DD</strong>
+          </div>
+          <div class="d-flex gap-2">
+            <button class="btn btn-outline-primary" data-open-create="routine">
+              <i class="fa-solid fa-repeat me-2"></i>루틴 추가
+            </button>
+            <button class="btn btn-outline-success" data-open-create="schedule">
+              <i class="fa-regular fa-calendar me-2"></i>일정 추가
+            </button>
+            <button class="btn btn-outline-warning" data-open-create="anniversary">
+              <i class="fa-regular fa-star me-2"></i>기념일 추가
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Create Item Modal -->
+  <div class="modal fade" id="createItemModal" tabindex="-1" aria-labelledby="createItemLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <form class="modal-content" id="createItemForm">
+        <div class="modal-header">
+          <h5 class="modal-title" id="createItemLabel">새 항목 추가</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="닫기"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">날짜</label>
+            <input type="date" class="form-control" id="itemDate" required />
+          </div>
+
+          <div class="row g-2">
+            <div class="col-md-6">
+              <label class="form-label">종류</label>
+              <select class="form-select" id="itemType" required>
+                <option value="routine">루틴</option>
+                <option value="schedule">일정</option>
+                <option value="anniversary">기념일</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">색상</label>
+              <div class="d-flex align-items-center gap-2 flex-wrap" id="colorSwatches" role="listbox" aria-label="색상 선택">
+                <!-- JS에서 스와치 주입 -->
+              </div>
+              <input type="color" class="form-control form-control-color mt-2" id="itemColor"
+                     value="#2563eb" title="커스텀 색상 선택">
+            </div>
+          </div>
+
+          <div class="mb-3 mt-2">
+            <label class="form-label">제목</label>
+            <input type="text" class="form-control" id="itemTitle" placeholder="예: 아침 스트레칭 / 팀 미팅 / 결혼기념일" required />
+          </div>
+
+          <div class="row g-2 align-items-end">
+            <div class="col-6">
+              <label class="form-label">시간</label>
+              <input type="time" class="form-control" id="itemTime" />
+            </div>
+            <div class="col-6">
+              <div class="form-check mt-4">
+                <input class="form-check-input" type="checkbox" id="itemAllDay" />
+                <label class="form-check-label" for="itemAllDay">하루 종일</label>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-3 d-none" id="repeatRow">
+            <label class="form-label">반복</label>
+            <select class="form-select" id="itemRepeat">
+              <option value="none">반복 없음</option>
+              <option value="daily">매일</option>
+              <option value="weekly">매주</option>
+              <option value="monthly">매월</option>
+              <option value="yearly">매년</option>
+            </select>
+          </div>
+
+          <div class="mt-3">
+            <label class="form-label">태그</label>
+            <div class="row g-2">
+              <div class="col-12">
+                <div class="d-flex flex-wrap gap-2" id="defaultTags">
+                  <!-- 기본 태그 체크박스 (JS 주입) -->
+                </div>
+              </div>
+              <div class="col-12">
+                <input type="text" class="form-control" id="customTags"
+                       placeholder="추가 태그 입력 (쉼표로 구분: 예) 회의, 식사)" />
+              </div>
+            </div>
+            <div class="form-text">기본 태그를 선택하거나, 쉼표로 구분해 자유롭게 추가할 수 있어요.</div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button class="btn btn-secondary" type="button" data-bs-dismiss="modal">취소</button>
+          <button class="btn btn-primary" type="submit"><i class="fa-regular fa-floppy-disk me-2"></i>저장</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- FAQ (간단) -->
+  <section id="faq" class="py-5 bg-white">
+    <div class="container">
+      <h2 class="fw-bold mb-4">자주 묻는 질문</h2>
+      <div class="accordion" id="faqAccordion">
+        <div class="accordion-item">
+          <h2 class="accordion-header" id="q1">
+            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#a1" aria-expanded="true" aria-controls="a1">
+              아이콘이 안 보일 때가 있어요.
+            </button>
+          </h2>
+          <div id="a1" class="accordion-collapse collapse show" aria-labelledby="q1" data-bs-parent="#faqAccordion">
+            <div class="accordion-body">
+              달력 셀에 마우스를 올리면 빠른 추가 아이콘과 일정 칩 내부의 아이콘이 나타납니다. (모바일은 터치 상태에서 표시)
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="py-4 border-top bg-light">
+    <div class="container d-flex flex-column flex-md-row justify-content-between align-items-center gap-3">
+      <div class="text-secondary small">© <span id="year"></span> ToDo Mate.</div>
+      <ul class="nav small">
+        <li class="nav-item"><a href="#calendar" class="nav-link px-2 text-secondary">달력</a></li>
+        <li class="nav-item"><a href="#faq" class="nav-link px-2 text-secondary">FAQ</a></li>
+      </ul>
+    </div>
+  </footer>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+          crossorigin="anonymous"></script>
+
+  <!-- App JS -->
+  <script>
+  (() => {
+    const $ = (sel, root = document) => root.querySelector(sel);
+    const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+
+    // ===== 날짜 유틸 =====
+    const pad2 = (n) => String(n).padStart(2, '0');
+    const fmt = (d) => `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+    const parseISO = (iso) => { const [y,m,dd] = iso.split('-').map(Number); return new Date(y, m-1, dd); };
+    const getMonthLabel = (y, m) => new Intl.DateTimeFormat('ko-KR', { year:'numeric', month:'long' }).format(new Date(y, m, 1));
+    const daysInMonth = (y, m) => new Date(y, m+1, 0).getDate();
+
+    // ===== 상태 =====
+    let viewYear, viewMonth;
+    let selectedDate;
+
+    // ===== 저장소 =====
+    const STORE_KEY = 'tdm.events';
+    const loadStore = () => {
+      try {
+        const raw = localStorage.getItem(STORE_KEY);
+        if (!raw) return { events: [] };
+        const obj = JSON.parse(raw);
+        return { events: Array.isArray(obj.events) ? obj.events : [] };
+      } catch { return { events: [] }; }
+    };
+    const saveStore = (store) => localStorage.setItem(STORE_KEY, JSON.stringify(store));
+    const genId = () => 'e_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+
+    // ===== 기본 색상/태그 =====
+    const SWATCHES = ['#2563eb','#16a34a','#f59e0b','#ef4444','#8b5cf6','#64748b','#14b8a6','#ec4899','#0ea5e9','#84cc16'];
+    const DEFAULT_TAGS = ['병원','회사','학원','모임','운동','가족','여행','개인','약속','쇼핑','공부'];
+
+    const defaultColorForType = (t) => ({
+      routine:'#2563eb',      // blue
+      schedule:'#16a34a',     // green
+      anniversary:'#f59e0b'   // amber
+    }[t] || '#64748b');
+
+    // 텍스트 색 대비 (WCAG 근사)
+    function contrastColor(hex){
+      const h = hex.replace('#','');
+      if (h.length !== 6) return '#111827';
+      const r = parseInt(h.slice(0,2),16)/255;
+      const g = parseInt(h.slice(2,4),16)/255;
+      const b = parseInt(h.slice(4,6),16)/255;
+      const sr = (r<=0.03928)? r/12.92 : Math.pow((r+0.055)/1.055, 2.4);
+      const sg = (g<=0.03928)? g/12.92 : Math.pow((g+0.055)/1.055, 2.4);
+      const sb = (b<=0.03928)? b/12.92 : Math.pow((b+0.055)/1.055, 2.4);
+      const L = 0.2126*sr + 0.7152*sg + 0.0722*sb;
+      return (L > 0.54) ? '#111827' : '#ffffff'; // 임계값 약간 높게
+    }
+
+    function iconFor(ev){
+      return ({
+        routine:'<i class="fa-solid fa-repeat"></i>',
+        schedule:'<i class="fa-regular fa-calendar"></i>',
+        anniversary:'<i class="fa-regular fa-star"></i>'
+      }[ev.type] || '<i class="fa-regular fa-circle"></i>');
+    }
+    function escapeHtml(s){
+      return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+    }
+
+    // ===== 반복 로직 =====
+    function occursOnDate(ev, dateIso){
+      const target = parseISO(dateIso);
+      const start = parseISO(ev.date);
+      const repeat = ev.repeat || 'none';
+
+      if (repeat === 'none')  return dateIso === ev.date;
+      if (target < start)     return false;
+      if (repeat === 'daily')   return true;
+      if (repeat === 'weekly')  return target.getDay() === start.getDay();
+      if (repeat === 'monthly') return target.getDate() === start.getDate();
+      if (repeat === 'yearly')  return (target.getMonth() === start.getMonth()) && (target.getDate() === start.getDate());
+      return false;
+    }
+    const eventsOnDate = (dateIso, store) => store.events.filter(ev => occursOnDate(ev, dateIso));
+
+    // ===== 엘리먼트 =====
+    const monthLabelEl = $('#cal-month-label');
+    const gridEl = $('#cal-grid');
+    const quickAddBar = $('#quickAddBar');
+    const quickAddDate = $('#quickAddDate');
+
+    const modalEl     = $('#createItemModal');
+    const formEl      = $('#createItemForm');
+    const inputDate   = $('#itemDate');
+    const inputType   = $('#itemType');
+    const inputTitle  = $('#itemTitle');
+    const inputTime   = $('#itemTime');
+    const inputAllDay = $('#itemAllDay');
+    const repeatRow   = $('#repeatRow');
+    const inputRepeat = $('#itemRepeat');
+    const colorSwWrap = $('#colorSwatches');
+    const inputColor  = $('#itemColor');
+    const tagWrap     = $('#defaultTags');
+    const customTags  = $('#customTags');
+
+    let bsModal = null;
+
+    // ===== 렌더링 =====
+    function setMonthLabel(y, m){ monthLabelEl.textContent = getMonthLabel(y, m); }
+
+    function setSelectedDate(iso){
+      selectedDate = iso;
+      quickAddBar.classList.remove('d-none');
+      quickAddDate.textContent = iso;
+      $$('.date-btn').forEach(b => b.classList.toggle('active', b.dataset.date === iso));
+    }
+
+    function buildCell(date, { muted=false, isToday=false } = {}, store){
+      const iso = fmt(date);
+
+      const td = document.createElement('td');
+      if (muted) td.classList.add('muted');
+      if (isToday) td.classList.add('today');
+      td.dataset.date = iso;
+
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'btn btn-sm btn-light rounded-3 px-2 py-1 date-btn w-100 text-start';
+      btn.dataset.date = iso;
+      btn.innerHTML = `<span class="fw-semibold">${date.getDate()}</span>`;
+      btn.addEventListener('click', () => setSelectedDate(iso));
+      td.appendChild(btn);
+
+      const mini = document.createElement('div');
+      mini.className = 'mini-actions';
+      mini.innerHTML = `
+        <button class="btn btn-outline-primary btn-sm" title="루틴" data-quick-add="routine" data-date="\${iso}">
+          <i class="fa-solid fa-repeat"></i>
+        </button>
+        <button class="btn btn-outline-success btn-sm" title="일정" data-quick-add="schedule" data-date="\${iso}">
+          <i class="fa-regular fa-calendar"></i>
+        </button>
+        <button class="btn btn-outline-warning btn-sm" title="기념일" data-quick-add="anniversary" data-date="\${iso}">
+          <i class="fa-regular fa-star"></i>
+        </button>`;
+      td.appendChild(mini);
+
+      const chipsWrap = document.createElement('div');
+      chipsWrap.className = 'chips';
+      const evs = eventsOnDate(iso, store);
+      const maxShow = 3;
+      evs.slice(0, maxShow).forEach(ev => {
+        const bg = ev.color || defaultColorForType(ev.type);
+        const fg = contrastColor(bg);
+        const chip = document.createElement('span');
+        chip.className = 'chip';
+        chip.style.background = bg;
+        chip.style.color = fg;
+        chip.style.borderColor = bg;
+        const tagTitle = (ev.tags && ev.tags.length) ? `\\n태그: ${ev.tags.join(', ')}` : '';
+        chip.title = `${ev.title}${ev.time && !ev.allDay ? ' • '+ev.time : ''}${tagTitle}`;
+        chip.innerHTML = `${iconFor(ev)} ${escapeHtml(ev.title)}${ev.time && !ev.allDay ? ` <span class="opacity-75">${ev.time}</span>` : ''}`;
+        chipsWrap.appendChild(chip);
+      });
+      if (evs.length > maxShow){
+        const more = document.createElement('span');
+        more.className = 'chip';
+        more.textContent = '+' + (evs.length - maxShow);
+        chipsWrap.appendChild(more);
+      }
+      td.appendChild(chipsWrap);
+
+      mini.addEventListener('click', (e) => {
+        const t = e.target.closest('[data-quick-add]');
+        if (!t) return;
+        openCreateModal({ date: iso, type: t.dataset.quickAdd });
+      });
+
+      return td;
+    }
+
+    function renderGrid(y, m){
+      gridEl.innerHTML = '';
+      const store = loadStore();
+      setMonthLabel(y, m);
+
+      const first = new Date(y, m, 1);
+      const totalDays = daysInMonth(y, m);
+      const firstWeekday = first.getDay();
+      const prevMonthLast = new Date(y, m, 0);
+      const todayIso = fmt(new Date());
+
+      for (let cell=0; cell<42; cell++){
+        if (cell % 7 === 0) gridEl.appendChild(document.createElement('tr'));
+
+        let d, muted=false;
+        if (cell < firstWeekday){
+          d = new Date(prevMonthLast);
+          d.setDate(prevMonthLast.getDate() - (firstWeekday - 1 - cell));
+          muted = true;
+        } else if (cell >= firstWeekday + totalDays){
+          const offset = cell - (firstWeekday + totalDays) + 1;
+          d = new Date(y, m, totalDays + offset);
+          muted = true;
+        } else {
+          const day = cell - firstWeekday + 1;
+          d = new Date(y, m, day);
+        }
+
+        const isToday = fmt(d) === todayIso && !muted;
+        gridEl.lastElementChild.appendChild(buildCell(d, { muted, isToday }, store));
+      }
+
+      if (!selectedDate){
+        setSelectedDate(fmt(new Date()));
+      }else{
+        $$('.date-btn').forEach(b => b.classList.toggle('active', b.dataset.date === selectedDate));
+      }
+    }
+
+    // ===== 모달 =====
+    function ensureModal(){
+      if (!bsModal && typeof bootstrap !== 'undefined' && bootstrap.Modal){
+        bsModal = new bootstrap.Modal(modalEl);
+      }
+      return bsModal;
+    }
+
+    function openCreateModal({ date, type } = {}){
+      inputDate.value = (date || selectedDate || fmt(new Date()));
+      inputType.value = (type || 'schedule');
+      inputTitle.value = '';
+      inputTime.value = '';
+      inputAllDay.checked = false;
+
+      // 반복 UI
+      if (inputType.value === 'routine'){
+        repeatRow.classList.remove('d-none');
+        inputRepeat.value = 'daily';
+      } else if (inputType.value === 'anniversary'){
+        repeatRow.classList.remove('d-none');
+        inputRepeat.value = 'yearly';
+      } else {
+        repeatRow.classList.add('d-none');
+        inputRepeat.value = 'none';
+      }
+
+      // 기본 색상
+      inputColor.value = defaultColorForType(inputType.value);
+      // 스와치 활성화 리셋
+      $$('.swatch', colorSwWrap).forEach(s => s.setAttribute('aria-checked','false'));
+
+      // 태그 체크 리셋
+      $$('input[type="checkbox"]', tagWrap).forEach(c => c.checked = false);
+      customTags.value = '';
+
+      ensureModal()?.show();
+    }
+
+    inputType.addEventListener('change', () => {
+      if (inputType.value === 'routine'){
+        repeatRow.classList.remove('d-none');
+        if (inputRepeat.value === 'none') inputRepeat.value = 'daily';
+      } else if (inputType.value === 'anniversary'){
+        repeatRow.classList.remove('d-none');
+        inputRepeat.value = 'yearly';
+      } else {
+        repeatRow.classList.add('d-none');
+        inputRepeat.value = 'none';
+      }
+      inputColor.value = defaultColorForType(inputType.value);
+      $$('.swatch', colorSwWrap).forEach(s => s.setAttribute('aria-checked','false'));
+    });
+
+    inputAllDay.addEventListener('change', () => {
+      inputTime.disabled = inputAllDay.checked;
+      if (inputAllDay.checked) inputTime.value = '';
+    });
+
+    formEl.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const store = loadStore();
+
+      // 태그 수집
+      const picked = $$('input[type="checkbox"]', tagWrap).filter(c => c.checked).map(c => c.value);
+      const extras = customTags.value
+        .split(',')
+        .map(s => s.trim())
+        .filter(Boolean);
+      const tags = Array.from(new Set([...picked, ...extras])); // 중복 제거
+
+      const ev = {
+        id: genId(),
+        date: inputDate.value,
+        type: inputType.value,
+        title: inputTitle.value.trim(),
+        time: inputAllDay.checked ? null : (inputTime.value || null),
+        allDay: !!inputAllDay.checked,
+        repeat: inputRepeat.value,
+        color: inputColor.value,
+        tags,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      if (!ev.title){ inputTitle.focus(); return; }
+
+      store.events.push(ev);
+      saveStore(store);
+      ensureModal()?.hide();
+      renderGrid(viewYear, viewMonth);
+    });
+
+    // ===== 상단 월 전환 =====
+    $('#btnPrevMonth').addEventListener('click', () => {
+      const d = new Date(viewYear, viewMonth - 1, 1);
+      viewYear = d.getFullYear();
+      viewMonth = d.getMonth();
+      renderGrid(viewYear, viewMonth);
+    });
+    $('#btnNextMonth').addEventListener('click', () => {
+      const d = new Date(viewYear, viewMonth + 1, 1);
+      viewYear = d.getFullYear();
+      viewMonth = d.getMonth();
+      renderGrid(viewYear, viewMonth);
+    });
+    $('#btnToday').addEventListener('click', () => {
+      const now = new Date();
+      viewYear = now.getFullYear();
+      viewMonth = now.getMonth();
+      renderGrid(viewYear, viewMonth);
+      setSelectedDate(fmt(now));
+      $('#calendar').scrollIntoView({ behavior:'smooth', block:'start' });
+    });
+
+    // 빠른 추가 바 → 모달
+    document.addEventListener('click', (e) => {
+      const openBtn = e.target.closest('[data-open-create]');
+      if (!openBtn) return;
+      openCreateModal({ date: selectedDate, type: openBtn.dataset.openCreate });
+    });
+
+    // ===== 스와치/태그 주입 =====
+    function injectSwatches(){
+      colorSwWrap.innerHTML = '';
+      SWATCHES.forEach((hex, idx) => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'swatch';
+        b.style.background = hex;
+        b.setAttribute('role','option');
+        b.setAttribute('aria-checked','false');
+        b.title = hex;
+        b.addEventListener('click', () => {
+          inputColor.value = hex;
+          $$('.swatch', colorSwWrap).forEach(s => s.setAttribute('aria-checked','false'));
+          b.setAttribute('aria-checked','true');
+        });
+        colorSwWrap.appendChild(b);
+      });
+    }
+    function injectDefaultTags(){
+      tagWrap.innerHTML = '';
+      DEFAULT_TAGS.forEach(t => {
+        const id = 'tag_' + t;
+        const label = document.createElement('label');
+        label.className = 'form-check form-check-inline';
+        label.innerHTML = `
+          <input class="form-check-input" type="checkbox" id="${id}" value="${t}">
+          <span class="form-check-label">${t}</span>
+        `;
+        tagWrap.appendChild(label);
+      });
+    }
+
+    // ===== 초기화 =====
+    document.addEventListener('DOMContentLoaded', () => {
+      const now = new Date();
+      viewYear = now.getFullYear();
+      viewMonth = now.getMonth();
+      injectSwatches();
+      injectDefaultTags();
+      renderGrid(viewYear, viewMonth);
+      setSelectedDate(fmt(now));
+      $('#year').textContent = now.getFullYear();
+    });
+
+    // 안전망
+    $('#year').textContent = new Date().getFullYear();
+  })();
+  </script>
+</body>
+</html>
